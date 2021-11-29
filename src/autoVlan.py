@@ -1,48 +1,49 @@
+# -*- coding: utf-8 -*-
+
 import os
 import sys
 import exsh
 
-OUI = {
-    '00:08:02' : 'Compaq',
-    '00:0c:29' : 'VMWare',
-    '00:0d:60' : 'IBM',
-    '00:12:17' : 'Cisco-Linksys',
-    '00:13:e8' : 'Intel',
-    '00:15:c5' : 'Dell',
-    '00:1e:c9' : 'Dell',
-    '84:2b:2b' : 'Dell',
-    'a4:ba:db' : 'Dell',
-    '02:60:8c' : '3Com',
-    '00:01:30' : 'Extreme Networks',
-    '00:04:96' : 'Extreme Networks',
-    'D8:84:66' : 'Extreme Networks',
-    '00:01:F4' : 'Enterasys Networks',
-    '00:11:88' : 'Enterasys Networks',
-    '00:1F:45' : 'Enterasys Networks',
-    '20:B3:99' : 'Enterasys Networks',
-    '00:e0:34' : 'Cisco',
-    '00:e0:52' : 'Foundry Networks',
-    '00:1a:a0' : 'Dell',
-    '00:50:79' : 'VPC - GNS3'
-}
-
 def writeLog(log):
-    exsh.clicmd('create log message "{}"'.format(log))
-
-argv = ['','','']
-for i in range(3):
-    try:
-        argv[0] = sys.argv[0]
-    except:
-        argv[0] = 'none'
+    exsh.clicmd('create log message {}'.format(log))
 
 def main():
-    writeLog('LOG ARGS -> '+str(sys.argv))
+    OUI = { #Objeto com o OUI (Identificador do fabricante). Sera utilizado para filtrar o mac-address e associar a porta as respectivas VLANs. 
+        'D8:84:66' : 'MAC OUI EXTREME AP MODELO 3715e',
+        'DC:B8:08' : 'MAC OUI EXTREME AP MODELO 3915i',
+        '94:9B:2C' : 'MAC OUI EXTREME AP MODELO 3915e',
 
-    if(sys.argv[1] == 'DEVICE-DETECT'):
-        exsh.clicmd('configure vlan '+vlans+' add port '+sys.argv[2]+' tagged')
-    elif(sys.argv[1] == 'DEVICE-UNDETECT'):
-        exsh.clicmd('configure vlan SW delete ports '+sys.argv[2])
+    VLANS = [1000,1001,1002] #Vetor com as vlans que serao configuradas apos o evento ocorrer
+
+    eventType = sys.argv[1].upper()
+    eventPort = sys.argv[2]
+
+    try {
+        eventMAC = sys.argv[3]
+        if 'EVENT.MAC' in eventMAC : raise ValueError('Nenhum MAC foi passado como argumento') 
+
+    } except {
+        eventMAC = exsh.clicmd('show fdb ports {}'.format(eventPort), capture=True)
+        eventMAC = eventMAC[eventMAC.find(':')-2:eventMAC.find(':')+15]
+    }
+
+    eventOUI = eventMAC[0:8].upper()
+    if eventMAC:
+        try:
+            eventModel = OUI[eventOUI]
+
+            if(eventType == 'DEVICE-DETECT'):
+                exsh.clicmd('disable netlogin ports {} dot1x web-based mac'.format(eventPort))
+                for vlan in VLANS:
+                    exsh.clicmd('configure vlan {} add port {} tagged'.format(vlan, eventPort))
+
+            elif(eventType == 'DEVICE-UNDETECT'):
+                exsh.clicmd('enable netlogin ports {} dot1x web-based mac'.format(eventPort))
+                for vlan in VLANS:
+                    exsh.clicmd('configure vlan {} delete ports {}'.format(vlan, eventPort))
+        
+        except:
+            pass
 
 if __name__ == '__main__':
     try:
