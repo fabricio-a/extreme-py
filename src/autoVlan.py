@@ -12,6 +12,7 @@ def main():
         'D8:84:66' : 'MAC OUI EXTREME AP MODELO 3715e',
         'DC:B8:08' : 'MAC OUI EXTREME AP MODELO 3915i',
         '94:9B:2C' : 'MAC OUI EXTREME AP MODELO 3915e',
+    }
 
     VLANS = [1000,1001,1002] #Vetor com as vlans que serao configuradas apos o evento ocorrer
 
